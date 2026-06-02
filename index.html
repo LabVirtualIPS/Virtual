@@ -550,14 +550,15 @@
 
         let interactiveMap, simMap, simLayersGroup;
         let isSignUpMode = false;
+
         // --- AUTH & SESSION ENGINE CONFIG ---
         // GANTI INI DENGAN KREDENSIAL SUPABASE ANDA
         const SUPABASE_URL = "https://bkwrbzhyxvauyyohzqam.supabase.co";
         const SUPABASE_ANON_KEY = "sb_publishable_temNJnBSwl6Wu9Qsmgeiyw_XefhtUhv";
         
         let supabaseClient;
-        if (SUPABASE_URL !== "https://bkwrbzhyxvauyyohzqam.supabase.co") {
-            supabaseClient = supabase.createClient(https://bkwrbzhyxvauyyohzqam.supabase.co, sb_publishable_temNJnBSwl6Wu9Qsmgeiyw_XefhtUhv);
+        if (SUPABASE_URL !== "MASUKKAN_SUPABASE_URL_ANDA_DISINI") {
+            supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         }
 
         document.addEventListener("DOMContentLoaded", () => {
@@ -582,7 +583,7 @@
                 // Menangani jika user belum memasukkan kredensial API Supabase
                 document.getElementById('loader-screen').style.display = 'none';
                 showAuthUI();
-                Swal.fire({ icon: 'info', title: 'Supabase Belum Dikonfigurasi', text: 'Silakan isi variabel SUPABASE_URL dan SUPABASE_ANON_KEY di bagian script kode terlebih dahulu.', confirmButtonColor: '#00B4D8' });
+                Swal.fire({ icon: 'info', title: 'Supabase Belum Dikonfigurasi', text: 'Silakan isi variabel SUPABASE_URL and SUPABASE_ANON_KEY di bagian script kode terlebih dahulu.', confirmButtonColor: '#00B4D8' });
                 return;
             }
 
@@ -839,7 +840,7 @@
         function openKerjasamaModal(pilar) {
             let infoText = '';
             if(pilar === 'Ekonomi') infoText = 'Implementasi konkrit meliputi <span class="text-cyanAccent font-bold">MEA (Masyarakat Ekonomi ASEAN)</span> dan kawasan perdagangan bebas <span class="text-cyanAccent font-bold">AFTA</span>.';
-            else if(pilar === 'Sosial') infoText = 'Koordinasi aktif melalui lembaga pusat bantuan kemানুsiaan tanggap darurat regional <span class="text-cyanAccent font-bold">AHA Centre</span>.';
+            else if(pilar === 'Sosial') infoText = 'Koordinasi aktif melalui lembaga pusat bantuan kemanusiaan tanggap darurat regional <span class="text-cyanAccent font-bold">AHA Centre</span>.';
             else if(pilar === 'Budaya') infoText = 'Diwujudkan melalui pentas kolosal <span class="text-cyanAccent font-bold">Festival Budaya ASEAN</span> dan ajang <span class="text-cyanAccent font-bold">SEA Games</span>.';
             else if(pilar === 'Politik') infoText = 'Mencakup zona damai netral <span class="text-cyanAccent font-bold">ZOPFAN</span> dan Traktat Kawasan Bebas Senjata Nuklir <span class="text-cyanAccent font-bold">(SEANWFZ)</span>.';
             else if(pilar === 'Pendidikan') infoText = 'Diimplementasikan berupa jaringan beasiswa dan ikatan guru <span class="text-cyanAccent font-bold">ACT (ASEAN Council of Teachers)</span>.';
