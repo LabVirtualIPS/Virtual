@@ -552,58 +552,89 @@
         let isSignUpMode = false;
 
         // --- AUTH & SESSION ENGINE CONFIG ---
-        // GANTI INI DENGAN KREDENSIAL SUPABASE ANDA
         const SUPABASE_URL = "https://bkwrbzhyxvauyyohzqam.supabase.co";
         const SUPABASE_ANON_KEY = "sb_publishable_temNJnBSwl6Wu9Qsmgeiyw_XefhtUhv";
         
         let supabaseClient;
-        if (SUPABASE_URL !== "MASUKKAN_SUPABASE_URL_ANDA_DISINI") {
-            supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        try {
+            if (typeof supabase !== 'undefined' && SUPABASE_URL && SUPABASE_ANON_KEY) {
+                supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            }
+        } catch(e) {
+            console.error("Inisialisasi database bermasalah:", e);
         }
 
         document.addEventListener("DOMContentLoaded", () => {
-            AOS.init({ duration: 800, once: true });
+            if (typeof AOS !== 'undefined') AOS.init({ duration: 800, once: true });
             
-            // Progress loader simulasi
+            // Progress loader simulasi animasi 100%
             let prg = 0; const prgBar = document.getElementById('loader-progress');
             const interval = setInterval(() => {
                 prg += 25; if (prgBar) prgBar.style.width = prg + '%';
                 if (prg >= 100) { 
                     clearInterval(interval); 
-                    checkSession(); // Jalankan cek sesi auth setelah loading selesai
+                    checkSession(); // Pindah ke pengecekan Supabase setelah selesai
                 }
             }, 150);
 
-            particlesJS("particles-js", { "particles": { "number": { "value": 45 }, "color": { "value": "#00B4D8" }, "opacity": { "value": 0.2 }, "size": { "value": 3 }, "line_linked": { "enable": true, "distance": 150, "color": "#00B4D8", "opacity": 0.08, "width": 1 }, "move": { "enable": true, "speed": 1.5 } }, "retina_detect": true });
+            if (typeof particlesJS !== 'undefined') {
+                particlesJS("particles-js", { "particles": { "number": { "value": 45 }, "color": { "value": "#00B4D8" }, "opacity": { "value": 0.2 }, "size": { "value": 3 }, "line_linked": { "enable": true, "distance": 150, "color": "#00B4D8", "opacity": 0.08, "width": 1 }, "move": { "enable": true, "speed": 1.5 } }, "retina_detect": true });
+            }
         });
 
-        // --- SESSION MANAGEMENT ---
+        // --- SAFETY BLOCK FOR MANAGEMENT SESSION ---
         async function checkSession() {
-            if (!supabaseClient) {
-                // Menangani jika user belum memasukkan kredensial API Supabase
+            try {
+                if (!supabaseClient) {
+                    // Jika konfigurasi tidak ada / gagal dimuat
+                    document.getElementById('loader-screen').style.display = 'none';
+                    showAuthUI();
+                    Swal.fire({ 
+                        icon: 'warning', 
+                        title: 'Supabase Error', 
+                        text: 'Pustaka Supabase gagal terhubung. Cek koneksi internet Anda atau pastikan URL/Key valid.', 
+                        confirmButtonColor: '#00B4D8' 
+                    });
+                    return;
+                }
+
+                // Baris kritis yang sering macet tanpa try-catch
+                const { data: { session }, error } = await supabaseClient.auth.getSession();
+                
+                if (error) throw error;
+
+                // Tutup loading screen jika berhasil merespon
                 document.getElementById('loader-screen').style.display = 'none';
-                showAuthUI();
-                Swal.fire({ icon: 'info', title: 'Supabase Belum Dikonfigurasi', text: 'Silakan isi variabel SUPABASE_URL and SUPABASE_ANON_KEY di bagian script kode terlebih dahulu.', confirmButtonColor: '#00B4D8' });
-                return;
-            }
 
-            const { data: { session }, error } = await supabaseClient.auth.getSession();
-            document.getElementById('loader-screen').style.display = 'none';
-
-            if (session) {
-                showMainAppUI(session.user);
-            } else {
-                showAuthUI();
-            }
-
-            // Listen Perubahan Status Auth (Login/Logout otomatis antar tab)
-            supabaseClient.auth.onAuthStateChange((_event, session) => {
                 if (session) {
                     showMainAppUI(session.user);
                 } else {
                     showAuthUI();
                 }
-            });
+
+                supabaseClient.auth.onAuthStateChange((_event, session) => {
+                    if (session) {
+                        showMainAppUI(session.user);
+                    } else {
+                        showAuthUI();
+                    }
+                });
+
+            } catch (err) {
+                console.error("Terjadi kesalahan auth:", err);
+                
+                // FORCE: Matikan loading agar tidak stuck di layar loading terus-menerus
+                document.getElementById('loader-screen').style.display = 'none';
+                showAuthUI();
+                
+                // Beritahu user jenis eror jaringan/aksesnya
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal Menghubungkan ke Supabase',
+                    text: 'Detail Masalah: ' + err.message + '. Harap periksa koneksi internet Anda atau pastikan kredensial Supabase Anda di Dashboard benar.',
+                    confirmButtonColor: '#00B4D8'
+                });
+            }
         }
 
         function showAuthUI() {
@@ -616,7 +647,6 @@
             document.getElementById('main-app').classList.remove('hidden');
             document.getElementById('user-display-email').innerText = user.email;
 
-            // Inisialisasi komponen maps dan fitur jika belum pernah dibuat
             if (!interactiveMap) {
                 initMainFeatures();
             }
@@ -656,29 +686,25 @@
             Swal.fire({ title: 'Memproses...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
             if (isSignUpMode) {
-                // REGISTER
                 const { data, error } = await supabaseClient.auth.signUp({ email, password });
                 Swal.close();
                 if (error) {
                     Swal.fire({ icon: 'error', title: 'Pendaftaran Gagal', text: error.message, confirmButtonColor: '#EF4444' });
                 } else {
-                    Swal.fire({ icon: 'success', title: 'Berhasil Daftar', text: 'Silakan periksa email Anda untuk konfirmasi pesan pendaftaran, lalu silakan login!', confirmButtonColor: '#00B4D8' });
+                    Swal.fire({ icon: 'success', title: 'Berhasil Daftar', text: 'Silakan periksa email Anda untuk konfirmasi pendaftaran, lalu silakan login!', confirmButtonColor: '#00B4D8' });
                     toggleAuthMode();
                 }
             } else {
-                // LOGIN
                 const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
                 Swal.close();
                 if (error) {
                     Swal.fire({ icon: 'error', title: 'Gagal Masuk', text: error.message, confirmButtonColor: '#EF4444' });
                 } else {
-                    // Berhasil masuk, onAuthStateChange akan langsung memindahkan view
                     Swal.fire({ icon: 'success', title: 'Selamat Datang!', text: 'Akses laboratorium digital disetujui.', timer: 1500, showConfirmButton: false });
                 }
             }
         }
 
-        // --- LOGOUT ---
         async function handleLogout() {
             Swal.fire({
                 title: 'Keluar Laboratorium?',
@@ -698,7 +724,9 @@
 
         // --- CORE APPLICATION INITIALIZATION ---
         function initMainFeatures() {
-            new Typed('#typed-subtitle', { strings: ['Interaksi Keruangan Dalam Kehidupan Negara ASEAN', 'Laboratorium Sosial Geografis & Geo-Politik SMP'], typeSpeed: 40, backSpeed: 20, loop: true });
+            if (typeof Typed !== 'undefined') {
+                new Typed('#typed-subtitle', { strings: ['Interaksi Keruangan Dalam Kehidupan Negara ASEAN', 'Laboratorium Sosial Geografis & Geo-Politik SMP'], typeSpeed: 40, backSpeed: 20, loop: true });
+            }
             
             initRealMaps();
             renderMapButtons();
@@ -710,6 +738,7 @@
 
         // --- LEAFLET MAPS ENGINE ---
         function initRealMaps() {
+            if (typeof L === 'undefined') return;
             interactiveMap = L.map('map-interaktif').setView([8.5, 112], 4);
             L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: '' }).addTo(interactiveMap);
 
@@ -738,7 +767,7 @@
                 const btn = document.createElement('button');
                 btn.className = "px-3 py-1 text-xs rounded-full bg-slate-800 border border-white/10 hover:bg-cyanAccent hover:text-slate-900 transition-all";
                 btn.innerText = countriesData[name].flag + " " + name;
-                btn.onclick = () => { interactiveMap.flyTo(countriesData[name].coord, 6); openCountryModal(name); };
+                btn.onclick = () => { if(interactiveMap) { interactiveMap.flyTo(countriesData[name].coord, 6); openCountryModal(name); } };
                 container.appendChild(btn);
             });
         }
@@ -776,7 +805,7 @@
                     matches.forEach(m => {
                         const div = document.createElement('div'); div.className = "p-2.5 hover:bg-cyanAccent hover:text-slate-900 cursor-pointer border-b border-white/5";
                         div.innerText = countriesData[m].flag + " " + m;
-                        div.onclick = () => { sugBox.classList.add('hidden'); e.target.value = ''; interactiveMap.flyTo(countriesData[m].coord, 6); openCountryModal(m); };
+                        div.onclick = () => { sugBox.classList.add('hidden'); e.target.value = ''; if(interactiveMap) { interactiveMap.flyTo(countriesData[m].coord, 6); openCountryModal(m); } };
                         sugBox.appendChild(div);
                     });
                 } else sugBox.classList.add('hidden');
@@ -791,7 +820,7 @@
                     if(e.key === 'Enter') {
                         const val = mapInput.value.trim().toLowerCase();
                         const match = searchableCountries.find(c => c.toLowerCase() === val);
-                        if(match) { interactiveMap.flyTo(countriesData[match].coord, 6); openCountryModal(match); mapInput.value = ''; }
+                        if(match && interactiveMap) { interactiveMap.flyTo(countriesData[match].coord, 6); openCountryModal(match); mapInput.value = ''; }
                     }
                 });
             }
@@ -799,6 +828,7 @@
 
         // --- SIMULATION ANT PATHS ENGINE ---
         function runSimulation(type) {
+            if(!simLayersGroup || typeof L === 'undefined') return;
             simLayersGroup.clearLayers();
             let cap = {}; Object.keys(countriesData).forEach(c => cap[c] = countriesData[c].capCoord);
             
@@ -831,8 +861,10 @@
             titleEl.innerHTML = title; descEl.innerText = desc;
 
             paths.forEach(data => {
-                let p = L.polyline.antPath([data[0], data[1]], { color: data[2], pulseColor: '#FFFFFF', delay: 400, weight: 4, dashArray: [15, 20] });
-                p.addTo(simLayersGroup);
+                if(L.polyline.antPath) {
+                    let p = L.polyline.antPath([data[0], data[1]], { color: data[2], pulseColor: '#FFFFFF', delay: 400, weight: 4, dashArray: [15, 20] });
+                    p.addTo(simLayersGroup);
+                }
             });
         }
 
@@ -892,6 +924,7 @@
         }
 
         function initChartJS() {
+            if (typeof Chart === 'undefined') return;
             new Chart(document.getElementById('chartPopulasi'), {
                 type: 'bar',
                 data: { labels: ['ID', 'PH', 'VN', 'TH', 'MM', 'MY', 'KH', 'LA', 'SG', 'BN'], datasets: [{ data: [275, 113, 98, 71, 54, 33, 16, 7.5, 5.9, 0.45], backgroundColor: 'rgba(0, 180, 216, 0.5)', borderColor: '#00B4D8', borderWidth: 1 }] },
@@ -954,7 +987,7 @@
             const feedbackEl = document.getElementById('quiz-status-feedback'), certWrap = document.getElementById('certificate-wrapper'), printBtn = document.getElementById('btn-print-certificate');
             if(score >= 80) {
                 feedbackEl.innerHTML = `<span class="text-emerald-400 font-bold">LULUS!</span> Selamat, Anda menguasai materi.`;
-                certWrap.classList.remove('hidden'); printBtn.classList.remove('hidden'); confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
+                certWrap.classList.remove('hidden'); printBtn.classList.remove('hidden'); if(typeof confetti !== 'undefined') confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
             } else {
                 feedbackEl.innerHTML = `<span class="text-red-400 font-bold">BELUM LULUS.</span> Skor kelulusan adalah 80.`;
                 certWrap.classList.add('hidden'); printBtn.classList.add('hidden');
