@@ -159,6 +159,8 @@
                     <a href="#kerja-sama" class="hover:text-cyanAccent transition-colors"><i class="fa-solid fa-hands-holding-circle mr-1"></i> Kerja Sama</a>
                     <a href="#museum" class="hover:text-cyanAccent transition-colors"><i class="fa-solid fa-building-columns mr-1"></i> Museum</a>
                     <a href="#quiz" class="hover:text-cyanAccent transition-colors"><i class="fa-solid fa-gamepad mr-1"></i> Kuis</a>
+                    <a href="#teacher-dashboard" class="hover:text-cyanAccent transition-colors"><i class="fa-solid fa-chalkboard-user mr-1"></i> Guru
+                    </a>
                 </div>
 
                 <div class="flex items-center space-x-4">
@@ -520,7 +522,97 @@
                 </div>
             </section>
         </main>
+<section id="teacher-dashboard" class="py-20 relative overflow-hidden">
 
+<div class="max-w-7xl mx-auto px-6">
+
+<h2 class="text-4xl font-black mb-10 text-center">
+👨‍🏫 Dashboard Guru
+</h2>
+
+<div class="grid md:grid-cols-4 gap-6 mb-8">
+
+<div class="glass-panel p-6 rounded-2xl">
+<p class="text-sm text-slate-400">Total Siswa</p>
+<h3 id="teacher-total" class="text-4xl font-bold text-cyanAccent">
+0
+</h3>
+</div>
+
+<div class="glass-panel p-6 rounded-2xl">
+<p class="text-sm text-slate-400">Rata-rata Nilai</p>
+<h3 id="teacher-average" class="text-4xl font-bold text-emerald-400">
+0
+</h3>
+</div>
+
+<div class="glass-panel p-6 rounded-2xl">
+<p class="text-sm text-slate-400">Nilai Tertinggi</p>
+<h3 id="teacher-highest" class="text-4xl font-bold text-amber-400">
+0
+</h3>
+</div>
+
+<div class="glass-panel p-6 rounded-2xl">
+<p class="text-sm text-slate-400">Nilai Terendah</p>
+<h3 id="teacher-lowest" class="text-4xl font-bold text-red-400">
+0
+</h3>
+</div>
+
+</div>
+
+<div class="glass-panel p-6 rounded-2xl mb-8">
+<h3 class="text-2xl font-bold mb-4">
+Grafik Nilai Kelas
+</h3>
+
+<canvas id="teacherChart"></canvas>
+</div>
+
+<div class="glass-panel p-6 rounded-2xl">
+
+<div class="flex justify-between items-center mb-6">
+
+<h3 class="text-2xl font-bold">
+Daftar Nilai Siswa
+</h3>
+
+<button
+onclick="exportTeacherCSV()"
+class="px-5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 transition">
+Export CSV
+</button>
+
+</div>
+
+<div class="overflow-x-auto">
+
+<table class="w-full">
+
+<thead>
+
+<tr class="border-b border-white/10">
+<th class="text-left p-3">Nama</th>
+<th class="text-left p-3">Skor</th>
+<th class="text-left p-3">Tanggal</th>
+</tr>
+
+</thead>
+
+<tbody id="teacher-table">
+
+</tbody>
+
+</table>
+
+</div>
+
+</div>
+
+</div>
+
+</section>
         <footer class="border-t border-white/10 glass-panel bg-slate-950/80 mt-24 relative z-10 px-4 py-8 md:px-8 text-center text-xs text-slate-500">
             <div class="max-w-7xl mx-auto space-y-4">
                 <div class="flex justify-center items-center space-x-2">
@@ -580,6 +672,7 @@
             if (typeof particlesJS !== 'undefined') {
                 particlesJS("particles-js", { "particles": { "number": { "value": 45 }, "color": { "value": "#00B4D8" }, "opacity": { "value": 0.2 }, "size": { "value": 3 }, "line_linked": { "enable": true, "distance": 150, "color": "#00B4D8", "opacity": 0.08, "width": 1 }, "move": { "enable": true, "speed": 1.5 } }, "retina_detect": true });
             }
+            loadTeacherDashboard();
         });
 
         async function checkSession() {
@@ -621,6 +714,194 @@
             document.getElementById('main-app').classList.add('hidden');
             document.getElementById('auth-container').classList.remove('hidden');
         }
+async function loadTeacherDashboard(){
+
+if(!supabaseClient) return;
+
+try{
+
+const { data, error } = await supabaseClient
+.from('quiz_results')
+.select('*')
+.order('tanggal',{ascending:false});
+
+if(error) throw error;
+
+renderTeacherStats(data);
+renderTeacherTable(data);
+renderTeacherChart(data);
+
+}catch(err){
+
+console.error(
+'Dashboard Guru Error',
+err
+);
+
+}
+
+}
+        function renderTeacherStats(data){
+
+if(!data || !data.length) return;
+
+const scores =
+data.map(x => x.skor);
+
+const avg =
+scores.reduce(
+(a,b)=>a+b,
+0
+)
+/
+scores.length;
+
+document.getElementById(
+'teacher-total'
+).innerText =
+new Set(
+data.map(x=>x.nama)
+).size;
+
+document.getElementById(
+'teacher-average'
+).innerText =
+avg.toFixed(1);
+
+document.getElementById(
+'teacher-highest'
+).innerText =
+Math.max(...scores);
+
+document.getElementById(
+'teacher-lowest'
+).innerText =
+Math.min(...scores);
+
+}
+function renderTeacherTable(data){
+
+const table =
+document.getElementById(
+'teacher-table'
+);
+
+table.innerHTML = '';
+
+data.forEach(item => {
+
+table.innerHTML += `
+
+<tr class="border-b border-white/5">
+
+<td class="p-3">
+${item.nama}
+</td>
+
+<td class="p-3 font-bold text-cyanAccent">
+${item.skor}
+</td>
+
+<td class="p-3">
+${new Date(item.tanggal)
+.toLocaleDateString('id-ID')}
+</td>
+
+</tr>
+
+`;
+
+});
+
+}
+let teacherChart;
+
+function renderTeacherChart(data){
+
+const ctx =
+document.getElementById(
+'teacherChart'
+);
+
+if(teacherChart){
+teacherChart.destroy();
+}
+
+teacherChart =
+new Chart(ctx,{
+
+type:'bar',
+
+data:{
+
+labels:data.map(
+x=>x.nama
+),
+
+datasets:[{
+
+label:'Nilai',
+
+data:data.map(
+x=>x.skor
+)
+
+}]
+
+},
+
+options:{
+responsive:true
+}
+
+});
+
+}
+function exportTeacherCSV(){
+
+const rows =
+document.querySelectorAll(
+'#teacher-table tr'
+);
+
+let csv =
+'Nama,Skor,Tanggal\n';
+
+rows.forEach(row=>{
+
+const cols =
+row.querySelectorAll('td');
+
+if(cols.length){
+
+csv +=
+`${cols[0].innerText},${cols[1].innerText},${cols[2].innerText}\n`;
+
+}
+
+});
+
+const blob =
+new Blob(
+[csv],
+{
+type:'text/csv'
+}
+);
+
+const url =
+window.URL.createObjectURL(blob);
+
+const a =
+document.createElement('a');
+
+a.href = url;
+a.download =
+'rekap_nilai_siswa.csv';
+
+a.click();
+
+}
 
         // Modifikasi: Mengambil nama user asli dari tabel database 'users' saat login berhasil
         async function showMainAppUI(user) {
